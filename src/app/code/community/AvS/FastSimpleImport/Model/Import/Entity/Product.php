@@ -225,6 +225,13 @@ class AvS_FastSimpleImport_Model_Import_Entity_Product extends AvS_FastSimpleImp
             return;
         }
 
+        $newAttributeOptions = [];
+
+        /** @var $attribute Mage_Eav_Model_Entity_Attribute */
+        foreach ($this->getDropdownAttributes() as $attribute) {
+            $newAttributeOptions[$attribute->getAttributeCode()] = [];
+        }
+
         $this->_getSource()->rewind();
         while ($this->_getSource()->valid()) {
 
@@ -241,12 +248,15 @@ class AvS_FastSimpleImport_Model_Import_Entity_Product extends AvS_FastSimpleImp
                 $options = $this->_getAttributeOptions($attribute);
 
                 if (!in_array(trim($rowData[$attributeCode]), $options, true)) {
-                    $this->_createAttributeOption($attribute, trim($rowData[$attributeCode]));
+                    $this->_attributeOptions[$attributeCode][] = trim($rowData[$attributeCode]);
+                    $newAttributeOptions[$attributeCode][]     = trim($rowData[$attributeCode]);
                 }
             }
 
             $this->_getSource()->next();
         }
+
+        $this->_createNewAttributeOptions($this->getDropdownAttributes(), $newAttributeOptions);
     }
 
     /**
@@ -256,6 +266,13 @@ class AvS_FastSimpleImport_Model_Import_Entity_Product extends AvS_FastSimpleImp
     {
         if (!sizeof($this->getMultiselectAttributes()) || $this->getIsDryRun()) {
             return;
+        }
+
+        $newAttributeOptions = [];
+
+        /** @var $attribute Mage_Eav_Model_Entity_Attribute */
+        foreach ($this->getMultiselectAttributes() as $attribute) {
+            $newAttributeOptions[$attribute->getAttributeCode()] = [];
         }
 
         $this->_getSource()->rewind();
@@ -274,12 +291,15 @@ class AvS_FastSimpleImport_Model_Import_Entity_Product extends AvS_FastSimpleImp
                 $options = $this->_getAttributeOptions($attribute);
 
                 if (!in_array(trim($rowData[$attributeCode]), $options, true)) {
-                    $this->_createAttributeOption($attribute, trim($rowData[$attributeCode]));
+                    $this->_attributeOptions[$attributeCode][] = trim($rowData[$attributeCode]);
+                    $newAttributeOptions[$attributeCode][]     = trim($rowData[$attributeCode]);
                 }
             }
 
             $this->_getSource()->next();
         }
+
+        $this->_createNewAttributeOptions($this->getMultiselectAttributes(), $newAttributeOptions);
     }
 
     /**
@@ -309,24 +329,29 @@ class AvS_FastSimpleImport_Model_Import_Entity_Product extends AvS_FastSimpleImp
     }
 
     /**
-     * @param Mage_Eav_Model_Entity_Attribute $attribute
-     * @param string $optionLabel
+     * @param array $attributes
+     * @param array $newOptionLabels
      */
-    protected function _createAttributeOption($attribute, $optionLabel)
+    protected function _createNewAttributeOptions($attributes, $newOptionLabels)
     {
-        $option = array(
-            'value' => array(
-                array('0' => $optionLabel)
-            ),
-            'order' => array(0),
-            'delete' => array('')
-        );
+        /** @var $attribute Mage_Eav_Model_Entity_Attribute */
+        foreach ($attributes as $attribute) {
+            $options = [
+                'value' => [],
+                'order' => [],
+                'delete' => []
+            ];
 
-        $attribute->setOption($option);
+            $count = 0;
+            foreach ($newOptionLabels[$attribute->getAttributeCode()] as $newOptionLabel) {
+                $options['value']["option_$count"] = [ $newOptionLabel ];
+                $options['order']["option_$count"] = 0;
+                $count++;
+            }
 
-        $attribute->save();
-
-        $this->_attributeOptions[$attribute->getAttributeCode()][] = $optionLabel;
+            $attribute->setOption($options);
+            $attribute->save();
+        }
         $this->_initTypeModels();
     }
 
